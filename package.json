@@ -1,0 +1,48 @@
+{
+  "name": "@10ign/logging",
+  "version": "1.0.0",
+  "description": "Logging utility service",
+  "main": "dist/Logging.js",
+  "source": "src/Logging.ts",
+  "types": "dist/Logging.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:10ign/logging.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "10ign",
+    "logging",
+    "log",
+    "info",
+    "warning",
+    "error",
+    "debug",
+    "trace",
+    "track",
+    "console"
+  ],
+  "author": "Bruno Alves de Faria",
+  "license": "MIT",
+  "dependencies": {
+    "@10ign/bridge": "^1.0.4",
+    "@10ign/common-types": "^1.0.19",
+    "typescript": "^4.8.4"
+  },
+  "devDependencies": {
+    "jest": "^29.1.2",
+    "ts-jest": "^29.0.3",
+    "typedoc": "^0.23.16"
+  },
+  "engines": {
+    "npm": ">=8.0.0 <9.0.0",
+    "node": ">=14.14.0 <19.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "docs": "typedoc"
+  }
+}

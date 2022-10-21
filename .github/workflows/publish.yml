@@ -1,0 +1,172 @@
+name: 'Publish'
+
+on:
+  # Runs when a commit is pushed to the main branch
+  push:
+    branches:
+      - 'main'
+
+# Enable GITHUB_TOKEN permissions: version bump and deployment to GitHub Pages
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment
+concurrency:
+  group: "publish"
+  cancel-in-progress: true
+
+jobs:
+  # Builds the package
+  build:
+    name: 'Build'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: 'actions/checkout@v3'
+      - name: Yarn install
+        uses: borales/actions-yarn@v3.0.0
+        with:
+          cmd: install
+      - name: Build
+        uses: borales/actions-yarn@v3.0.0
+        with:
+          cmd: build
+      - name: Upload Dist
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist
+          path: ./dist
+
+  # Runs the unit tests
+  test:
+    name: 'Test'
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout
+        uses: 'actions/checkout@v3'
+      - name: Yarn install
+        uses: borales/actions-yarn@v3.0.0
+        with:
+          cmd: install
+      - name: Test
+        uses: borales/actions-yarn@v3.0.0
+        with:
+          cmd: test
+      - name: Upload Coverage
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage
+          path: ./coverage
+
+  # Bumps a new version
+  bump-version:
+    name: 'Bump Version'
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout
+        uses: 'actions/checkout@v3'
+      - name: Version
+        uses: 'phips28/gh-action-bump-version@master'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Publishes to npm
+  publish:
+    name: 'NPM Publish'
+    runs-on: ubuntu-latest
+    needs: bump-version
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: main
+      - name: Download Dist
+        uses: actions/download-artifact@v3
+        with:
+          name: dist
+          path: ./dist
+      - uses: JS-DevTools/npm-publish@v1
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
+
+  # Publish coverage results to Coveralls
+  coveralls:
+    name: 'Publish to Coveralls'
+    runs-on: ubuntu-latest
+    needs: publish
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: main
+      - name: Download Coverage
+        uses: actions/download-artifact@v3
+        with:
+          name: coverage
+          path: ./coverage
+      - name: Coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  # Generates the documentation files
+  docs:
+    name: 'Generate Documentation'
+    runs-on: ubuntu-latest
+    needs: publish
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: main
+      - name: Yarn install
+        uses: borales/actions-yarn@v3.0.0
+        with:
+          cmd: install
+      - name: Generate Docs
+        uses: borales/actions-yarn@v3.0.0
+        with:
+          cmd: docs
+      - name: Upload Docs
+        uses: actions/upload-artifact@v3
+        with:
+          name: docs
+          path: ./docs
+
+  # Deploy the documentation to GitHub pages
+  pages:
+    name: 'Deploy to GitHub Pages'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: docs
+
+    steps:
+      - name: Download Docs
+        uses: actions/download-artifact@v3
+        with:
+          name: docs
+          path: ./docs
+      - name: Setup Pages
+        uses: actions/configure-pages@v2
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: './docs'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v1
